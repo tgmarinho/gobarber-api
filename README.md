@@ -1,7 +1,10 @@
-## Aula 13 - Conceitos de JWT
+## Aula 14 - Autenticação JWT
 
-Json Web Token([JWT](https://jwt.io/)) , server para fazer autenticação.
+Vamos usar a lib [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken):
 
-**JWT (JSON Web Token)** é um sistema de transferência de dados que pode ser enviado via POST ou em um cabeçalho HTTP (header) de maneira “segura”, essa informação é assinada digitalmente por um algoritmo HMAC, ou um par de chaves pública/privada usando RSA. ([Saiba mais...](https://imasters.com.br/desenvolvimento/json-web-token-conhecendo-o-jwt-na-teoria-e-na-pratica))
+ ```yarn add jsonwebtoken```
 
-Gera um token com headers (tipo de token, algoritmo), Payload (Dados adicionais) e Assinatura ( o que garante a veracidade do token, não pode ser modificado)
+Para criar a autenticação do usuário, podemos criar um controller: SessionController.js que server para tratar a autenticação e não a criação de usuário.
+
+Para gerar string aleatória (secret).
+[https://www.md5online.org/](https://www.md5online.org/)
