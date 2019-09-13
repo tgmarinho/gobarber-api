@@ -1,12 +1,7 @@
-## Aula 12 - Gerando o ash da senha
+## Aula 13 - Conceitos de JWT
 
-Quando o usuário digita a senha e envia para o controllers, queremos que seja gerado um hash para salvar a senha no banco de dados, e posteriomente quando ele for fazer login, ele digita a senha normal, e geramos um hash e comparamos com o hash que foi salvo no password_hash do banco de dados, se for igual, ok, está autenticado.
+Json Web Token([JWT](https://jwt.io/)) , server para fazer autenticação.
 
-Para fazer isso precisamos de uma lib para gerar o hash do password:
-```
-yarn add bcryptjs
-```
+**JWT (JSON Web Token)** é um sistema de transferência de dados que pode ser enviado via POST ou em um cabeçalho HTTP (header) de maneira “segura”, essa informação é assinada digitalmente por um algoritmo HMAC, ou um par de chaves pública/privada usando RSA. ([Saiba mais...](https://imasters.com.br/desenvolvimento/json-web-token-conhecendo-o-jwt-na-teoria-e-na-pratica))
 
-Bcryptjs é utilizado no model de User, criamos um campo virtual, que é utilizado para receber o password do frontend e que é hashead para através da lib bcrypt para a variável password_hash que essa sim é uma String que é persistida no banco de dados.
-
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula12](https://github.com/tgmarinho/gobarber/tree/aula12)
+Gera um token com headers (tipo de token, algoritmo), Payload (Dados adicionais) e Assinatura ( o que garante a veracidade do token, não pode ser modificado)
