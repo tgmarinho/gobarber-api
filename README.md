@@ -1,112 +1,161 @@
+## Aula 6 - Padrão de código - Eslint, Prettier & EditorConfig
 
-## Aula 5 - Sequelize & MVC
+Padrão de código é muito util quando se está trabalhando com um time, pq cada um pode fazer as coisas de sua maneira e a base de código não vai ficar muito boa, tem desenvolvedor que vai usar var, outro const, e outro let, vai pular linha no final, outro não vai, vai usars export default, e outro não, e isso gera uma bagunça, e ai com isso temos algumas ferramentas que ajudam a definir as regras(padrão) de código e um estilizador de código utilizando as regras, e o mais adotado na comunidade JS, é o Eslint para definir as regras e o Prettier para formatra o código conforme as regras definidas no Eslint.
 
-Sequelize é um [ORM](https://pt.wikipedia.org/wiki/Mapeamento_objeto-relacional) (Object-relational mapping), basicamente ele faz o mapeamento dos objetos como entidade no banco de dados.
-Os bancos de dados tem um conceito de Entidade, Tabelas, Atributos, e a aplicação tem o conceito de Objetos, Atributos ou propriedades e métodos ou função. O que o ORM faz é mapear o objeto, criando uma tabela e os atributos mapeando para campos do banco de dados.
-O Sequelize também ajuda a fazer as consultas do banco de dados, em vez de usar SQL nativo, podemos usar objetos com seus respectivos métodos, e escrevar javascript para fazer operações de CRUD persistência no BD.
+Mas o ESLINT tbm não tem qualquer regra, você pode usar algumas mais utilizadas no mercado, como as guias de estilos do [Airbnb](https://github.com/airbnb/javascript), [Standard](https://standardjs.com/) e outros, cada um tem suas características e estilos de escrita, ai vai do gosto de cada um, e do padrão que seu framework adota também, no caso Adonis utilizar o Stardard, então é sugestivo você usar o Standard para criar seu projeto seguindo esse estilo.
 
-As tabelas do banco de dados se transformam em Models (MVC)
+### Configurando o projeto
 
-no banco de dados temos:
+Adicionando o eslint como dependencias de desenvolvimento:
 
-users, products, productsItem 
-
-e no no JS teremos Users.js, Products.js, ProductsItem.js.
-
-Diferença entre SQL e SequelizeSQL:
-
-SQL:
 ```
-INSERT INTO users (name, email) VALUES ("Thiago Marinho", "tgmarinho@gmail.com")
-```
-```
-SELECT * FROM users WHERE email = "tgmarinho@gmail.com" LIMIT 1
-```
+ yarn add eslint -D
+ ```
 
-Sequelize:
-```
-User.create({ name: 'Diego Fernandes' , email: 'diego@rocketseat.com.br' , })
-```
-```
-User.findOne({ where: { email: 'tgmarinho@gmail.com' } })
-```
+Feito isso só inicializar o eslint:
 
-###  No Sequelize temos também as Migrations:
+``` yarn eslint --init```
+Ele vai fazer algumas perguntas e você pode configurar a seu gosto, eu usei a terceira opção:
 
-- Controle de versão para base de dados:
-	- Cada alteracão na tabela como adição, remoção de campos ou criação de novas tabelas, é nas migrations que criamos a a estrutura. É um controlador de versão mesmo, pode fazer roolback para desfazer alguma coisa, no banco de dados fica um registro de versão de cada migration que é executada.
-- Cada arquivo contém instruções para criação, alteração ou remoção de
-tabelas ou colunas;
-- Mantém a base atualizada entre todos desenvolvedores do time e também
-no ambiente de produção;
-- Cada arquivo é uma migration e sua ordenação ocorre por data;
+```
+gobarber on  aula6 [!] took 10s
+❯ yarn eslint --init
+yarn run v1.12.0
+$ /Users/tgmarinho/Developer/bootcamp_rocketseat_studies/gobarber/node_modules/.bin/eslint --init
+? How would you like to use ESLint?
+  To check syntax only
+  To check syntax and find problems
+❯ To check syntax, find problems, and enforce code style
+```
+E só seguir respondendo o Eslint. No final ele pede para instalar as dependecias, só instalar e remocer o package-lock.json e executar um yarn para atualizar as dependencias, isso eu faço pq não estou usando o npm e sim o yarn como gerenciador de dependência e o eslint em baixo dos panos usa o npm para instalar.
 
-Exemplo de Migration:
-
+No final ele cria um arquivo: `.eslintrc.js` com as seguintes configurações padrão:
 ```
 module.exports = {
-    up: (queryInterface, Sequelize) != {
-        return queryInterface.createTable('users', {
-            id: {
-                allowNull: false,
-                autoIncrement: true,
-                primaryKey: true,
-                type: Sequelize.INTEGER
-            },
-            name: {
-                allowNull: false,
-                type: Sequelize.STRING
-            },
-            email: {
-                allowNull: false,
-                unique: true,
-                type: Sequelize.STRING
-            }
-        })
+    env: {
+        es6: true,
+        node: true,
     },
-    down: (queryInterface, Sequelize) != {
-        return queryInterface.dropTable('users')
+    extends: [
+        'airbnb-base',
+    ],
+    globals: {
+        Atomics: 'readonly',
+        SharedArrayBuffer: 'readonly',
+    },
+    parserOptions: {
+        ecmaVersion: 2018,
+        sourceType: 'module',
+    },
+    rules: {},
+};
+```
+
+OBS: Preciso ter o eslint nas extensões do VSCode.
+
+E para o eslint corrigir automaticamente quando salva o arquivo, precisa ter nas settings.json do VSCode a seguinte configuração:
+
+```
+  "eslint.autoFixOnSave": true,
+
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    {
+      "language": "typescript",
+      "autoFix": true
+    },
+    {
+      "language": "typescriptreact",
+      "autoFix": true
     }
+  ],
+```
+
+Pronto, agora já deve estar ok. Se o VSCode não estiver acusando erro de Eslint no arquivo app.js, pois com padrão Airbnb as aspas tem que ser simples, e deve ter ; no final de cada comando. Então fecha o vscode e abre novamente, ou tenta remover a node_modules e instalar novamente: `rm -rf node_modules/ yarn.lock && yarn`.
+
+No .eslintrc.js, teremos uma definição de novas regras, é tipo como subscrever as regras padrão da guia de estilo airbnb no eslint, isso é necessário algumas vezes devido algum framework que iremos utilizar no dia a dia.
+`.eslintrc.js`:
+```
+ rules: {
+    "class-methods-use-this": "off",
+    "no-param-reassign": "off",
+    camelcase: "off",
+    "no-unused-vars": ["error", { argsIgnorePattern: "next" }]
+  }
+```
+
+### Instalando o Prettier
+O Prettier melhora o código, deixando mais bonito, ele faz uma estilização a mais no código, além do que o eslint já faz.
+
+```
+ yarn add prettier eslint-config-prettier eslint-plugin-prettier -D
+```
+
+e no .eslintrc.js preciso declarar:
+
+```
+extends: ["airbnb-base", "prettier"],
+plugins: ["prettier"],
+```
+
+```
+ rules: {
+    "prettier/prettier": "error",
+    "class-methods-use-this": "off",
+    "no-param-reassign": "off",
+    camelcase: "off",
+    "no-unused-vars": ['error', { argsIgnorePattern:  'next' }],
+  }
+```
+
+Com isso o prettier está pronto para ser usado, porém, tem algumas regras de conflito entre o prettier e airbnb, então precisa de mais configuração, para desabitar as configurações que o prettier sobrescreveu do airbnb.
+
+Criar o arquivo: `prettier.rc`:
+```
+{
+	"singleQuote":  true,
+	"trailingComma":  "es5"
 }
 ```
-[https://sequelize.org/master/manual/migrations.html](https://sequelize.org/master/manual/migrations.html)
+Defini a regra para manter aspas simples e deixar ; no final de cada instrução de código. Done!
 
-Obs:
+Para corrigir todos os arquivos é só rodar:
 
-- É possível desfazer uma migração se errarmos algo enquanto estivermos
-desenvolvendo a feature;
-- Depois que a migration foi enviada para outros devs ou para ambiente de
-produção ela JAMAIS poderá ser alterada, uma nova deve ser criada;
-- Cada migration deve realizar alterações em apenas uma tabela, você pode
-criar várias migrations para alterações maiores;
-
-### Temos também os Seeds
-• População da base de dados para desenvolvimento:
-	- Podemos utilizar ele para gerar dados em tempo de execução do projeto, quando subimos o projeto ele cria dados fake.
-• Muito utilizado para popular dados para testes;
-• Executável apenas por código;
-• Jamais será utilizado em produção;
-	- A ideia aqui é usar apenas os dados fake, para testar o fluxo do sistema e também performance de listas, etc, tem várias libs em JS que geram dados fake que pode ser usado nos Seeds.
-• Caso sejam dados que precisam ir para produção, a própria migration
-pode manipular dados das tabelas;
-	- Os dados que vão para produção devem estar nas Migrations e não no Seed.
-
-## Arquitetura MVC
-
-Model, View, Controller é um arquitetura bem antiga e utilizado nos dias de hoje, onde:
-
-M = Model = Código da estrutura do banco de dados utilizando ORM ou não;
-V = View = Código HTML, CSS, JS, JSX, código de criação e manipulação das telas do site/app;
-C = Controller = Código JS, que contém a lógica do negócio, é o intermédiário entre o Model e a View
-
-```M <-> C <-> V```
-
-A View faz a requisição, o Controller recebe, processa, chama o banco de dados(Model) o banco retorna para o Controller e repassa para a View a resposta, a qual é renderizada para o usuário.
-
-Exemplo de um Controller:
 ```
-class UserController {
- index() { } !/ Listagem de usuários
- show() { } !/ Exibir um único usuário
- store() { } !/ Cadastrar usuário
- update() { } !/ Alterar usuário
+yarn eslint --fix src --ext .js
+```
+Legenda: --fix conserta tudo que está na pasta src que tenha a extensão(--ext) de arquivos .js.
+
+
+Podemos colocar ela no package.json:
+
+```
+ "scripts": {
+    "dev": "nodemon src/server",
+    "eslintify": "yarn eslint --fix src --ext .js"
+  },
+```
+
+e rodar : `yarn eslintify`
+
+Com isso, agora temos como manter o padrão de código na base de código da aplicação, se receber algum warn ou error, só ajustar conforme a sugestão do ESlint.
+
+Mas e se os outros desenvolvedores não usam a IDE VSCode? Usam o Sublime, Vim, Atom ou WebStorm?
+
+Ai entra o **EditorConfig**
+
+Ele serve para que as regras definidas no Eslint e Prettier sejam aplicadas para todos as IDEs.
+
+para isso basta criar um arquivo: `.editorConfig` na raiz do projeto com as configurações:
+
+```
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+```
