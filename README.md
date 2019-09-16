@@ -1,64 +1,63 @@
-## Aula 17 - Validando dados de entrada
+# Continuando API do GoBarber
 
-Vamos validar os dados do usuário, é uma boa pratica ter a validação do usuário no frontend no backend, a vantagem de estar no frontend é que a validação é mais rápida, não precisa ir diretamente no servidor para poder verificar se tem algum dado errado ou faltando, ganha em velocidade, também em menos tráfego ao servidor e principamente na segurança. Ter só a validação no frontend não é uma boa prática, na verdade é uma péssima prática.
+## Aula 18 - Configurando Multer
 
-Vamos validar o frontend com biblioteca [Yup](https://github.com/jquense/yup), que faz uma validação no schema, Schema Validation:
+### Upload de imagem
 
-```
-yarn add yup
-```
+Usuário seleciona a imagem, o upload já é feito e o servidor retorna o ID da imagem.
+E no json no cadastro de usuário por exemplo, envia o ID da imagem.
 
-### Trecho de código com Yup Validation
+Utilizando o [multer](https://github.com/expressjs/multer) para upload de arquivos.
 
-Esse código é do método update no UserController.js
+Quando precisa enviar imagem para o servidor, tem que ser como `Multpart-data` (Multpart Form) e não `json`.
 
-```
-import  *  as Yup from  'yup';
-
-  const schema = Yup.object().shape({
-      name: Yup.string(),
-      email: Yup.string().email(),
-      oldPassword: Yup.string().min(6),
-      password: Yup.string()
-        .min(6)
-        .when('oldPassword', (oldPassword, field) =>
-          oldPassword ? field.required() : field
-        ),
-      confirmPassword: Yup.string().when('password', (password, field) =>
-        password ? field.required().oneOf([Yup.ref('password')]) : field
-      ),
-    });
-```
-
-Uso o Yup para criar um schema, passado um objeto com o corpo definido por mim, detalhe para campos condicionais, caso o oldPassword é informado o campo password deve ser obrigatório (required), o field no segundo parametro é o password.
-
-Mas se o usuário digitar a senha, ele precisa confirmar a senha, então ele informa o confirmPassword, e ambos precisam ser iguais, então uso a função `oneOf` que recebe um array, e o Yup tem a referências de todos os campos, então uso: `Yup.ref('password')`.
-
-Defino o schema, agora é só validar com os dados que vieram da requisição (req.body):
+Instalando o `multer`:
 
 ```
-if (!(await schema.isValid(req.body))) {
-	return res.status(400).json({ error:  'Validation fails' });
-}
+yarn add multer
 ```
 
-o método é assincrono então uso await, se tiver algo que não atende os requisitos do Schema Valitation então retorna uma mensagem para o usuário com error: 'Validation Fails'.
+Criar uma pasta fora do `src`, para armazenar as imagens: `tmp/uploads`, dentro da pasta `tmp` criar outra pasta `uploads`, onde vai ficar os arquivos físicos de uploads de arquivos.
 
-Podemos validar os dados informados no Login, dentro do SessionController.js:
+Criar um arquivo de configuração `multer.js` de dentro da `config`.
 
 ```
-  const schema = Yup.object().shape({
-      email: Yup.string()
-        .email()
-        .required(),
-      password: Yup.string().required(),
-    });
+import multer from 'multer';
+import crypto from 'crypto';
+import { extname, resolve } from 'path';
 
-    if (!(await schema.isValid(req.body))) {
-      return res.status(400).json({ error: 'Validation fails' });
-    }
+export default {
+  storage: multer.diskStorage({
+	// Local onde o arquivo será salvo na máquina do servidor
+    destination: resolve(__dirname, '..', '..', 'tmp', 'uploads'),
+    // Gerando o nome da imagem como um hash usando a lib nativa do node: crypto
+    filename: (req, file, cb) => {
+      crypto.randomBytes(16, (err, res) => {
+        if (err) return cb(err);
+        return cb(null, res.toString('hex') + extname(file.originalname));
+      });
+    },
+  }),
+};
 ```
 
-Aqui verificamos apenas se o usuário informou o email e senha.
+Depois criar um rota:
 
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula17](https://github.com/tgmarinho/gobarber/tree/aula17)
+```
+import multer from  'multer';
+const upload =  multer(multerConfig);
+
+const upload =  multer(multerConfig);
+
+routes.post('/files', upload.single('file'), (req, res) => {
+	return res.json({ ok:  true });
+});
+```
+
+A rota tem que usar o método post, e o corpo da requisição tem que ser um `multpart-form` em vez de `json`.
+
+Depois adicionar um atributo `file` e adicionar o arquivo nesse atributo.
+
+`upload.single('file')` significa que vou enviar apenas um arquivo dentro da propriedade `file`.
+
+Essa lib multer permite envio de multiplos arquivos.
