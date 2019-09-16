@@ -1,14 +1,36 @@
-## Aula 23 - Validações de agendamento
+## Aula 24 - Listando agendamentos do usuário
 
-- Validar se a data de agendamento é uma data futura
-- Validar se a data de agendamento já está ocupada para o mesmo prestador de serviço
-- Permitir agendar de hora em hora
-- Utilizar a [DateFNS](https://date-fns.org/)) pra lidar com datas
-	- Para instalar: `yarn add date-fns@next`
-	- `import { startOfHour, parseISO } from  'date-fns';`
-	- `parseISO` transforma `"2019-10-01T18:00:00-04:00"` em Objeto data do JS
-	- `startOfHour` despreza os minutos e segundos, e retorna apenas da hora. 18h35 fica apenas 18h.
-	- `isBefore(x,y)` verifica se a data do primeiro parametro é anterior a do segundo parametro
-- Não permitir agendamento duplicado para o o prestador na mesma hora.
+Mostrar todos os agendamentos do usuário logado e mostrar seus prestadores de serviços
 
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula23](https://github.com/tgmarinho/gobarber/tree/aula23)
+- Criar nova rota com método get no `routes.js` para o AppointmentController no método index.
+- Buscando todos os agendamentos do usuário logado, que não estão cancelados, tranzendo o usuário provider, prestador de serviço com o seu avatar. Ordenado por data, trazendo apenas os atributos id e data do agendamento.
+
+```
+class AppointmentController {
+  async index(req, res) {
+    const appointments = await Appointment.findAll({
+      where: {
+        user_id: req.userId,
+        canceled_at: null,
+      },
+      order: ['date'],
+      attributes: ['id', 'date'],
+      include: [
+        {
+          model: User,
+          as: 'provider',
+          attributes: ['id', 'name'],
+          include: [
+            {
+              model: File,
+              as: 'avatar',
+              attributes: ['id', 'path', 'url'],
+            },
+          ],
+        },
+      ],
+    });
+    return res.json(appointments);
+  }
+```
+Fim: [https://github.com/tgmarinho/gobarber/tree/aula24](https://github.com/tgmarinho/gobarber/tree/aula24)
