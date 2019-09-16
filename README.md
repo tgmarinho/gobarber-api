@@ -1,36 +1,16 @@
-## Aula 24 - Listando agendamentos do usuário
+## Aula 25 - Aplicando paginação
 
-Mostrar todos os agendamentos do usuário logado e mostrar seus prestadores de serviços
-
-- Criar nova rota com método get no `routes.js` para o AppointmentController no método index.
-- Buscando todos os agendamentos do usuário logado, que não estão cancelados, tranzendo o usuário provider, prestador de serviço com o seu avatar. Ordenado por data, trazendo apenas os atributos id e data do agendamento.
-
+- No Insomnia utiliza a aba query para passar parametros: page = 1 ou 2, n...
+- Pegar o page: `const { page =  1 } = req.query;``
+- Definir um limit, de quantos em quantos vou trazer e um offset para definir o corte:
+`AppointmentController.js`:
 ```
-class AppointmentController {
-  async index(req, res) {
-    const appointments = await Appointment.findAll({
-      where: {
-        user_id: req.userId,
-        canceled_at: null,
-      },
-      order: ['date'],
-      attributes: ['id', 'date'],
-      include: [
-        {
-          model: User,
-          as: 'provider',
-          attributes: ['id', 'name'],
-          include: [
-            {
-              model: File,
-              as: 'avatar',
-              attributes: ['id', 'path', 'url'],
-            },
-          ],
-        },
-      ],
-    });
-    return res.json(appointments);
-  }
+...
+limit:  20,
+offset: (page -  1) *  20,
+...
 ```
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula24](https://github.com/tgmarinho/gobarber/tree/aula24)
+
+Pronto, como tenho poucos registros, então se eu colocar page: 1, já trás todos os registros e se colocar page: 2 vai trazer apenas um array vazio.
+
+Fim: [https://github.com/tgmarinho/gobarber/tree/aula25](https://github.com/tgmarinho/gobarber/tree/aula25)
