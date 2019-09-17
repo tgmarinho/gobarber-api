@@ -1,9 +1,3 @@
-## Aula 29 - Listando notificações do usuário
-
-- Criar uma rota notifications
-- Criar o controller `NotificationController.js`:
-
-```
 import Notification from '../schemas/Notification';
 import User from '../models/User';
 
@@ -36,7 +30,3 @@ class NotificationController {
 }
 
 export default new NotificationController();
-```
-
-
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula29](https://github.com/tgmarinho/gobarber/tree/aula29)
