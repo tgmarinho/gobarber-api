@@ -1,48 +1,62 @@
-## Aula 26 - Listando agenda do prestador
+## Aula 27 - Configurando MongoDB
 
-- Mostar no painel do prestador de serviço a listagem de sua agenda
-- Criar uma nova rota para agenda do provider (schedule)
-- Criar um novo controller: ScheduleController.js
-- Verificar se o usuário logado é um provider(prestador)
-- buscar agenda pela data e fazer um parseISO
-- buscar os agendamentos do provedor logado, que não esteja cancelado e que a data seja no ínicio do dia buscado até o final do dia.
+- Conectar a aplicação com banco de dados não estrutural, pois iremos armazenar alguns dados que não são estruturados.
+
+- Criando um container do Mongo utilizando o Docker para baixar e configurar:
 
 ```
-import { startOfDay, endOfDay, parseISO } from 'date-fns';
-import { Op } from 'sequelize';
-import Appointment from '../models/Appointment';
-import User from '../models/User';
+docker run --name mongobarber -p 27017:27017 -d  -t mongo
+```
 
-class ScheduleController {
-  async index(req, res) {
-    const checkUserProvider = await User.findOne({
-      where: {
-        id: req.userId,
-        provider: true,
-      },
-    });
+Para saber se o mongo está funcionando: [http://localhost:27017/](http://localhost:27017/)
+Ou executar `docker ps` pra ver os containers em execução.
 
-    if (!checkUserProvider) {
-      return res.status(401).json({ error: 'User is not a provider' });
-    }
+- Instalar o Mongoose para ser o ORM, semelhante ao Sequelize do SQL:
 
-    const { date } = req.query;
-    const parsedDate = parseISO(date);
+```
+yarn add mongoose
+```
+- Utilizando o Mongoose
 
-    const appointments = await Appointment.findAll({
-      where: {
-        provider_id: req.userId,
-        canceled_at: null,
-        date: {
-          [Op.between]: [startOfDay(parsedDate), endOfDay(parsedDate)],
-        },
-      },
-      order: ['date'],
-    });
-    return res.json(appointments);
+Vamos inicializar o mongo dentro do `database/index.js`, assim como foi iniciando o postgres.
+
+Criamos a função `mongo()` que contém a configuração de conexão com `mongodb`, como não foi criado um usuário e senha na criação do container, então não precisa informar na string de conexão, basta só informa o endereço da máquina (host), e passamos o nome da collection que é criada assim que a conexão é efetuada, ela não precisa exisitir primeiro, ao contrário da conexão com postgres (SQL).
+```
+import Sequelize from 'sequelize';
+import mongoose from 'mongoose';
+import User from '../app/models/User';
+import File from '../app/models/File';
+import Appointment from '../app/models/Appointment';
+import databaseConfig from '../config/database';
+
+const models = [User, File, Appointment];
+
+class Database {
+  constructor() {
+    this.init();
+    this.mongo();
+  }
+
+  init() {
+    this.connection = new Sequelize(databaseConfig);
+
+    models
+      .map(model => model.init(this.connection))
+      .map(model => model.associate && model.associate(this.connection.models));
+  }
+
+  mongo() {
+    this.mongoConnection = mongoose.connect(
+      'mongodb://localhost:27017/gobarber',
+      {
+        useNewUrlParser: true, // estou utilizando um formato novo na string de conexão
+        useFindAndModify: true, // para poder buscar e atualizar os registros
+        useUnifiedTopology: true, // DeprecationWarning apareceu no console então eu estou usando, conforme a recomendação do mongo
+      }
+    );
   }
 }
 
-export default new ScheduleController();
+export default new Database();
 ```
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula26](https://github.com/tgmarinho/gobarber/tree/aula26)
+Fim: [https://github.com/tgmarinho/gobarber/tree/aula27](https://github.com/tgmarinho/gobarber/tree/aula27)
