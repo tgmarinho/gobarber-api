@@ -1,62 +1,69 @@
-## Aula 27 - Configurando MongoDB
+## Aula 28 - Notificando novos agendamentos
 
-- Conectar a aplicação com banco de dados não estrutural, pois iremos armazenar alguns dados que não são estruturados.
+- Vamos enviar uma notificação para o prestador de serviço toda vez que receber um novo agendamento, e por isso vamos utilizar o MongoDB, vamos adicionar as notificações dentro do mongo.
 
-- Criando um container do Mongo utilizando o Docker para baixar e configurar:
+- Criar os schemas do mongo, semelhante ao model das tabelas.
 
+- MongoDB tem Schema Free, um registro na Collection pode ter um campo e outro registro não ter o campo, isso difere das Tabelas, pois se um registro não tem um certo atributo, ele deve ter o campo com o valor `null`, e no mongo, o campo/registro nem precista existir. Por isso é Schema Free e se chama NOSQL, não tem estrutura. E no mongo também não tem as migrations.
+- As notificações não tem muita estrutura, ela armazena o ID do usuário, e as notificações não precisam se relacionar, nem precisa haver consultas com essa coleção (entidade).
+
+- Criando o Schema de Notification:
+
+`app/schema/Notification.js`:
 ```
-docker run --name mongobarber -p 27017:27017 -d  -t mongo
-```
-
-Para saber se o mongo está funcionando: [http://localhost:27017/](http://localhost:27017/)
-Ou executar `docker ps` pra ver os containers em execução.
-
-- Instalar o Mongoose para ser o ORM, semelhante ao Sequelize do SQL:
-
-```
-yarn add mongoose
-```
-- Utilizando o Mongoose
-
-Vamos inicializar o mongo dentro do `database/index.js`, assim como foi iniciando o postgres.
-
-Criamos a função `mongo()` que contém a configuração de conexão com `mongodb`, como não foi criado um usuário e senha na criação do container, então não precisa informar na string de conexão, basta só informa o endereço da máquina (host), e passamos o nome da collection que é criada assim que a conexão é efetuada, ela não precisa exisitir primeiro, ao contrário da conexão com postgres (SQL).
-```
-import Sequelize from 'sequelize';
 import mongoose from 'mongoose';
-import User from '../app/models/User';
-import File from '../app/models/File';
-import Appointment from '../app/models/Appointment';
-import databaseConfig from '../config/database';
 
-const models = [User, File, Appointment];
-
-class Database {
-  constructor() {
-    this.init();
-    this.mongo();
+const NotificationSchema = new mongoose.Schema(
+  {
+    content: {
+      type: String,
+      required: true,
+    },
+    user: {
+      type: Number,
+      required: true,
+    },
+    read: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+  },
+  {
+    timestamps: true, // Cria os campos created_at e update_at automagicamente
   }
+);
 
-  init() {
-    this.connection = new Sequelize(databaseConfig);
+export default mongoose.model('Notification', NotificationSchema);
+```
 
-    models
-      .map(model => model.init(this.connection))
-      .map(model => model.associate && model.associate(this.connection.models));
-  }
+E no controller utilizamos o schema de Notification para criar um registro no mongo:
 
-  mongo() {
-    this.mongoConnection = mongoose.connect(
-      'mongodb://localhost:27017/gobarber',
+```
+...
+import { startOfHour, parseISO, isBefore, format } from  'date-fns';
+import pt from  'date-fns/locale/pt';
+import Notification from  '../schemas/Notification';
+...
+...
+ /**
+     * Notify appointment provider
+     */
+    const user = await User.findByPk(req.userId);
+    const formattedDate = format(
+      hourStart,
+      "'dia' dd 'de' MMMM', às' H:mm'h'",
       {
-        useNewUrlParser: true, // estou utilizando um formato novo na string de conexão
-        useFindAndModify: true, // para poder buscar e atualizar os registros
-        useUnifiedTopology: true, // DeprecationWarning apareceu no console então eu estou usando, conforme a recomendação do mongo
+        locale: pt,
       }
     );
-  }
-}
-
-export default new Database();
+    await Notification.create({
+      content: `Novo agendamento de ${user.name} para o ${formattedDate}`,
+      user: provider_id,
+    });
+...
 ```
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula27](https://github.com/tgmarinho/gobarber/tree/aula27)
+
+Após criar o agendamento, eu crio uma notificação e armazeno no banco de dados, esse dado não é estruturado, eu lanço diretamente no content o nome do usuário e a data, eu não preciso relacionar Notification com Users e nem Appointments e fazer joins e mais joins de SQL, pois a notificação é do estado atual, que o usuário está, se ele mudar o nome dele, isso não é importante para a notificação nesse momento, e com o mongodb ganhasse bastante performance e facilidade justamente por não ter que escrever Queries SQL gigantes e outra vantagem é que podemos escrever em JS para fazer consultas no mongodb.
+
+Fim: [https://github.com/tgmarinho/gobarber/tree/aula28](https://github.com/tgmarinho/gobarber/tree/aula28)
