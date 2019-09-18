@@ -1,15 +1,3 @@
-## Aula 36 - Listando horários disponíveis
-
-Criar um controller para mostrar os horários disponíveis do prestador de serviço de uma dia
-Quero saber todos os horários disponíveis do prestador para um determinado dia.
-
-- Criar uma rota :
-```
-routes.get('/providers/:providerId/available', AvailableController.index);
-```
-Criar um controller `AvailableController.js`;
-
-```
 import {
   startOfDay,
   endOfDay,
@@ -81,36 +69,3 @@ class AvailableController {
 }
 
 export default new AvailableController();
-```
-
-Só vai retornar os horários que não tem appointment marcado e que o valor desejado será posterior a data atual (isto é não se pode marcar um agendamento para um horário que já passou).
-
-Recebo da requisição o ID do prestador e o dia que o usuário quer ver os horários disponíveis.
-
-Essa data vem como timestamp e formato de string do componente datepicker do frontend. Então é preciso transformar um Number.
-
-Depois busco todos agendamentos do provider informado pelo parâmetro da requisição, que não estejam cancelados, e que a data seja entre a primeira e última hora do dia informado.
-
-Crio uma tabela estática de horários fixos.
-
-E faço o restante da lógica e retorno para o usuário os horários em um objeto que retorna:
-
-```
- {
-    "time": "15:00",
-    "value": "2019-09-18T15:00:00-04:00",
-    "available": false
-  },
-  {
-    "time": "16:00",
-    "value": "2019-09-18T16:00:00-04:00",
-    "available": true
-  },
-  {
-    "time": "17:00",
-    "value": "2019-09-18T17:00:00-04:00",
-    "available": true
-  },
-```
-
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula36](https://github.com/tgmarinho/gobarber/tree/aula36)
