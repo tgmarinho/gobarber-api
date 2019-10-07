@@ -1,87 +1,208 @@
-## Aula 39 - Variáveis de ambiente
+## Aula 02 - Ajustes na API
 
-Criar variáveis de ambiente para proteger os dados sensíveis e permitir que variáveis sejam configuradas para cada ambiente que a aplicação está rodando.
+Vamos precisar ajustar a API, no backend gobarber.
 
-Vamos criar um arquivo `.env` e um `.env.example` o .env nunca deverá ser commitado, ele é particular de seu ambiente, o .env.example como nome sugere é um exemplo das variáveis que devem ser preenchidas.
-Elas estão sendo usadas em vários arquivos da aplicação. Os dados que não são sensíveis podem manter no .env.example.
-
-Para utilizar temos que instalar uma lib  [dotenv](https://github.com/motdotla/dotenv) que serve para carregar as variáves de dentro do `.env` para o `nodejs`, no `process.env`.
-
-Para funcionar precisamos importar a lib no arquivo principal do projeto, `app.js`:
+Vamos instalar o `cors` da aplicação para que o frontend possa acessar a nossa api.
 
 ```
-import 'dotenv/config';
+yarn add cors
+```
+
+E vamos usá-lo no arquivo `app.js`:
+
+
+```
+  middlewares() {
+    this.server.use(Sentry.Handlers.requestHandler());
+    this.server.use(cors());
+    this.server.use(express.json());
+    this.server.use(
+      '/files',
+      express.static(path.resolve(__dirname, '..', 'tmp', 'uploads'))
+    );
+  }
+  ```
+
+Como estamos em desenvolvimento não vamos passar parametro, mas quando estiveremos em produçào podemos colocar o ip ou endereço:
+
+```
+this.server.use(cors({'www.meuapp.com.br'}));
+```
+
+Pronto, agora no login do usuário temos que pegar o avatar dele,
+
+então vamos mudar a `SessionController.js` para poder pegar o avatar do usuário:
+
+```
+import * as Yup from 'yup';
+import jwt from 'jsonwebtoken';
+import authConf from '../../config/auth';
+import User from '../models/User';
+import File from '../models/File';
+
+class SessionController {
+  async store(req, res) {
+    const schema = Yup.object().shape({
+      email: Yup.string()
+        .email()
+        .required(),
+      password: Yup.string().required(),
+    });
+
+    if (!(await schema.isValid(req.body))) {
+      return res.status(400).json({ error: 'Validation fails' });
+    }
+
+    const { email, password } = req.body;
+
+    const user = await User.findOne({
+      where: { email },
+      include: [
+        {
+          model: File,
+          as: 'avatar',
+          attributes: ['id', 'path', 'url'],
+        },
+      ],
+    });
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (!(await user.checkPassword(password))) {
+      return res.status(401).json({ error: 'Password does not match!' });
+    }
+
+    const { id, name, avatar } = user;
+
+    return res.json({
+      user: {
+        id,
+        name,
+        email,
+        avatar,
+      },
+      token: jwt.sign({ id }, authConf.secret, {
+        expiresIn: authConf.expireIn,
+      }),
+    });
+  }
+}
+
+export default new SessionController();
+```
+
+Para testar tem que estar o banco de dados executando na aplicação, e no Insomnia e testar a aplicação.
+
+E precisamos do avatar no UserController.js quando o usuário editar o perfil, o avatar pode ser alterado também:
+
+```
+import * as Yup from 'yup';
+import User from '../models/User';
+import File from '../models/File';
+
+class UserController {
+  async store(req, res) {
+    const schema = Yup.object().shape({
+      name: Yup.string().required(),
+      email: Yup.string()
+        .email()
+        .required(),
+      password: Yup.string()
+        .required()
+        .min(6),
+    });
+
+    if (!(await schema.isValid(req.body))) {
+      return res.status(400).json({ error: 'Validation fails' });
+    }
+
+    const userExists = await User.findOne({ where: { email: req.body.email } });
+    if (userExists) {
+      return res.status(400).json({ error: 'User already exists.' });
+    }
+    const { id, name, email, provider } = await User.create(req.body);
+    return res.json({ id, name, email, provider });
+  }
+
+  async update(req, res) {
+    const schema = Yup.object().shape({
+      name: Yup.string(),
+      email: Yup.string().email(),
+      oldPassword: Yup.string().min(6),
+      password: Yup.string()
+        .min(6)
+        .when('oldPassword', (oldPassword, field) =>
+          oldPassword ? field.required() : field
+        ),
+      confirmPassword: Yup.string().when('password', (password, field) =>
+        password ? field.required().oneOf([Yup.ref('password')]) : field
+      ),
+    });
+
+    if (!(await schema.isValid(req.body))) {
+      return res.status(400).json({ error: 'Validation fails' });
+    }
+
+    const { email, oldPassword } = req.body;
+    const user = await User.findByPk(req.userId);
+    if (user.email !== email) {
+      const userExists = await User.findOne({
+        where: { email },
+      });
+      if (userExists) {
+        return res.status(400).json({ error: 'User already exists.' });
+      }
+    }
+    // só faço isso se ele informou a senha antiga, isto é, quer alterar a senha
+    if (oldPassword && !(await user.checkPassword(oldPassword))) {
+      return res.status(401).json({ error: 'Password does not match.' });
+    }
+
+    await user.update(req.body);
+
+    const { id, name, avatar, provider } = await User.findByPk(req.userId, {
+      include: [
+        {
+          model: File,
+          as: 'avatar',
+          attributes: ['id', 'path', 'url'],
+        },
+      ],
+    });
+
+    return res.json({ id, name, email, avatar, provider });
+  }
+}
+
+export default new UserController();
+```
+
+
+Última alteração vai ser no ScheduleController.js onde listaremos também o nome do usuário.
+
+```
+...
+    const appointments = await Appointment.findAll({
+      where: {
+        provider_id: req.userId,
+        canceled_at: null,
+        date: {
+          [Op.between]: [startOfDay(parsedDate), endOfDay(parsedDate)],
+        },
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['name'],
+        },
+      ],
+      order: ['date'],
+    });
 ...
 ```
 
-e dentro do `queue.js` também.
-```
-require('dotenv/config');
-...
-```
+Agora para continuar  o desenvolvimento do frontend, temos que estar com o backend executando para podermos consumir a API.
 
-Arquivo `.env.example`:
-
-```
-# create a .env and configure it for you environment
-
-APP_URL=http://localhost:3333
-NODE_ENV=development
-
-# Auth
-
-APP_SECRET=
-
-# Database
-
-DB_HOST=
-DB_USER=
-DB_PASS=
-DB_NAME=
-
-# Mongo
-
-MONGO_URL=
-
-# Redis
-
-REDIS_HOST=127.0.0.1
-REDIS_POST=6379
-
-# Mail
-
-MAIL_HOST=
-MAIL_PORT=
-MAIL_SECURE=false
-MAIL_USER=
-MAIL_PASS=
-MAIL_FROM=
-
-# Sentry
-
-SENTRY_DSN=
-```
-
-Pronto, agora é substituir onde estão essas variáveis:
-
-Exemplo: `src/config/database.js`:
-
-```
-require('dotenv').config();
-
-module.exports = {
-  dialect: 'postgres',
-  host: process.env.DB_HOST,
-  username: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  define: {
-    timestamps: true,
-    underscored: true,
-    underscoredAll: true,
-  },
-};
-
-```
-Fim: [https://github.com/tgmarinho/gobarber/tree/aula39](https://github.com/tgmarinho/gobarber/tree/aula39)
-
+Código: [https://github.com/tgmarinho/gobarber-api/tree/aula-40-ajustes-na-api](https://github.com/tgmarinho/gobarber-api/tree/aula-40-ajustes-na-api)
